@@ -206,12 +206,10 @@ def _train():
     num_filenames_input,num_filenames_output = len(filenames_input_train),len(filenames_output_train)
     filenames_output_train *= math.ceil(num_filenames_input/num_filenames_output)
     filenames_input_test = get_filenames(dir_file=FLAGS.dataset_test, shuffle_filename=False)
-    filenames_output_test = get_filenames(dir_file=FLAGS.dataset_test, shuffle_filename=False)
 
     # check input and output sample number matches (SEPARATE FOLDER)
     assert(num_filenames_input<=len(filenames_output_train))
     num_filename_train = len(filenames_input_train)
-    assert(len(filenames_input_test)==len(filenames_output_test))
     num_filename_test = len(filenames_input_test)
 
     # Permutate train and test split (SEPARATE FOLDERS)
@@ -223,11 +221,6 @@ def _train():
         index_permutation_split = random.sample(range(num_filename_train), num_filename_train)      
     filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
 
-    # Permutate test split (SAME FOLDERS)
-    '''if FLAGS.permutation_split: # do not permutate test for now
-        index_permutation_split = random.sample(range(num_filename_test), num_filename_test)
-        filenames_input_test = [filenames_input_test[x] for x in index_permutation_split]
-        filenames_output_test = [filenames_output_test[x] for x in index_permutation_split]'''
     print("First three filenames_output_Test",filenames_output_test[0:3])
     print("First three filenames_Input_train",filenames_input_train[0:3])
     print("First three filenames_Output_train",filenames_output_train[0:3])
@@ -236,7 +229,6 @@ def _train():
     train_filenames_input = filenames_input_train[:FLAGS.sample_train]    
     train_filenames_output = filenames_output_train[:FLAGS.sample_train]            
     test_filenames_input  = filenames_input_test[:FLAGS.sample_test]
-    test_filenames_output  = filenames_output_test[:FLAGS.sample_test]
 
     # get undersample mask
     from scipy import io as sio
@@ -252,7 +244,7 @@ def _train():
                                                              train_filenames_output, image_size=image_size, label_size=label_size,
                                                                         axis_undersample=FLAGS.axis_undersample)
     test_features, test_MY, test_s, test_labels = wgancs_input.setup_inputs_one_sources(sess, test_filenames_input, 
-                                                             test_filenames_output, image_size=image_size, label_size=label_size,
+                                                                             None, image_size=image_size, label_size=label_size,
                                                                         test=True, axis_undersample=FLAGS.axis_undersample)
     
     print('train_features_queue', train_features.get_shape())
@@ -296,7 +288,6 @@ def _train():
     # Train model
     train_data = TrainData(locals())
     wgancs_train.train_model(train_data, FLAGS.starting_batch, num_sample_train, num_sample_test)
-
 
 
 def mkdirp(path):
