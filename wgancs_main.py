@@ -248,31 +248,16 @@ def _train():
         mask = None
         print("[warining] NO MASK PATTERN!!!")
     # Setup async input queues
-    train_features, train_labels, train_masks = wgancs_input.setup_inputs_one_sources(sess, train_filenames_input, 
-                                                                                      train_filenames_output, 
-                                                                        image_size=image_size, 
-                                                                        label_size=label_size,
-                                                                        axis_undersample=FLAGS.axis_undersample, 
-                                                                        r_factor=FLAGS.R_factor,
-                                                                        r_alpha=FLAGS.R_alpha,
-                                                                        r_seed=FLAGS.R_seed,
-                                                                        sampling_mask=mask
-                                                                        )
-    test_features,  test_labels, test_masks = wgancs_input.setup_inputs_one_sources(sess, test_filenames_input, 
-                                                                                    test_filenames_output,
-                                                                        image_size=image_size, 
-                                                                        label_size=label_size,
-                                                                        # undersampling
-                                                                        axis_undersample=FLAGS.axis_undersample, 
-                                                                        r_factor=FLAGS.R_factor,
-                                                                        r_alpha=FLAGS.R_alpha,
-                                                                        r_seed=FLAGS.R_seed,
-                                                                        sampling_mask=mask
-                                                                        )
+    train_features, train_MY, train_s, train_labels = wgancs_input.setup_inputs_one_sources(sess, train_filenames_input, 
+                                                             train_filenames_output, image_size=image_size, label_size=label_size,
+                                                                        axis_undersample=FLAGS.axis_undersample)
+    test_features, test_MY, test_s, test_labels = wgancs_input.setup_inputs_one_sources(sess, test_filenames_input, 
+                                                             test_filenames_output, image_size=image_size, label_size=label_size,
+                                                                        test=True, axis_undersample=FLAGS.axis_undersample)
     
     print('train_features_queue', train_features.get_shape())
     print('train_labels_queue', train_labels.get_shape())
-    print('train_masks_queue', train_masks.get_shape())
+    print('train_masks_queue', train_s.get_shape(),train_MY)
     num_sample_train = len(train_filenames_input)
     num_sample_test = len(test_filenames_input)
     print('train on {0} input, {1} label, test on {2} samples'.format(num_filenames_input,num_filenames_output, num_sample_test))
