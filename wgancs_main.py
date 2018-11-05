@@ -120,7 +120,7 @@ tf.app.flags.DEFINE_integer('sample_size', 256,
                             "Image sample height in pixels.")
 
 tf.app.flags.DEFINE_integer('sample_size_y', 320,
-                            "Image sample width in pixels)
+                            "Image sample width in pixels")
 
 tf.app.flags.DEFINE_integer('label_size', -1,
                             "Good Image height in pixels. by default same as sample_size")
@@ -221,7 +221,7 @@ def _train():
         index_permutation_split = random.sample(range(num_filename_train), num_filename_train)      
     filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
 
-    print("First three filenames_output_Test",filenames_output_test[0:3])
+    print("First three filenames_output_Test",filenames_input_test[0:3])
     print("First three filenames_Input_train",filenames_input_train[0:3])
     print("First three filenames_Output_train",filenames_output_train[0:3])
 
@@ -231,11 +231,11 @@ def _train():
     test_filenames_input  = filenames_input_test[:FLAGS.sample_test]
 
     # get undersample mask
-    from scipy import io as sio
     try:
         content_mask = sio.loadmat(FLAGS.sampling_pattern)
         key_mask = [x for x in content_mask.keys() if not x.startswith('_')]
-        mask = content_mask[key_mask[0]]
+        mask = content_mask[key_mask[0]].T
+        train_masks=tf.convert_to_tensor(mask)
     except:
         mask = None
         print("[warining] NO MASK PATTERN!!!")
@@ -244,16 +244,16 @@ def _train():
                                                              train_filenames_output, image_size=image_size, label_size=label_size,
                                                                         axis_undersample=FLAGS.axis_undersample)
     test_features, test_MY, test_s, test_labels = wgancs_input.setup_inputs_one_sources(sess, test_filenames_input, 
-                                                                             None, image_size=image_size, label_size=label_size,
+                                                                            None, image_size=image_size, label_size=label_size,
                                                                         test=True, axis_undersample=FLAGS.axis_undersample)
     
     print('train_features_queue', train_features.get_shape())
     print('train_labels_queue', train_labels.get_shape())
-    print('train_masks_queue', train_s.get_shape(),train_MY)
+    print('train_s_MY_queue', train_s.get_shape(),train_MY)
     num_sample_train = len(train_filenames_input)
     num_sample_test = len(test_filenames_input)
     print('train on {0} input, {1} label, test on {2} samples'.format(num_filenames_input,num_filenames_output, num_sample_test))
-
+    
     # Add some noise during training (think denoising autoencoders)
     noise_level = .00
     noisy_train_features = train_features + \
@@ -341,7 +341,7 @@ def get_filenames(dir_file='', shuffle_filename=False):
         random.shuffle(filenames)
     else:
         filenames = sorted(filenames)
-    filenames = [os.path.join(dir_file, f) for f in filenames if f.endswith('.jpg')]
+    filenames = [os.path.join(dir_file, f) for f in filenames if f.endswith('.npy')]
     return filenames
 
 def setup_tensorflow(gpu_memory_fraction=1.0):

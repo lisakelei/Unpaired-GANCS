@@ -21,27 +21,29 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
             image_size = [FLAGS.sample_size, FLAGS.sample_size_y]
         else:
             image_size = [FLAGS.sample_size, FLAGS.sample_size]
-
     # Read each np file
     reader_input = tf.WholeFileReader()
     filename_queue_input = tf.train.string_input_producer(filenames_input, shuffle=False)
-    _key, value_input = reader_input.read(filename_queue_input)
-
-    image_input = tf.convert_to_tensor(np.load(value_input)['mimage'],name=mimage)#tf.image.decode_jpeg(value_input, channels=channels, name="input_image")
-    print('mimage shape!!!!!!!! ',image_input.get_shape())
-    MY = tf.convert_to_tensor(np.load(value_input)['MY'],name=MY)
-    s = tf.convert_to_tensor(np.load(value_input)['s'],name=sens)
-    print('MY shape!!!!!!!! ',MY)
-    print('s shape!!!!!!!! ',s)        
+    key, _value_input = reader_input.read(filename_queue_input)
+    
     if test is False:
+        MYims= tf.py_func(read_npy,[key],tf.complex64,stateful=False)
+        MYims.set_shape([17,256,320])
+        image_input=MYims[8,:,:]
+        MY=MYims[0:8,:,:]
+        s=MYims[9::,:,:]
         reader_output = tf.WholeFileReader()
         filename_queue_output = tf.train.string_input_producer(filenames_output, shuffle=False)
-        _key, value_output = reader_output.read(filename_queue_output)
-        image_output = tf.convert_to_tensor(np.load(value_output),name=timage)#tf.image.decode_jpeg(value_output, channels=channels, name="output_image")
-        print('timage shape!!!!!!!! ',image_output)
+        key_out, _value_output = reader_output.read(filename_queue_output)
+        image_output = tf.py_func(read_npy,[key_out],tf.complex64)
+        image_output.set_shape([256,320])
     else:
-        image_output = tf.convert_to_tensor(np.load(value_input)['timage'],name=timage)#tf.image.decode_jpeg(value_output, channels=channels, name="output_image")
-        print('test timage shape!!!!!!!! ',image_output)
+        MYimst = tf.py_func(read_npy,[key],tf.complex64)
+        MYimst.set_shape([18,256,320])
+        image_output=MYimst[-1,:,:]
+        image_input=MYimst[8,:,:]
+        MY=MYimst[0:8,:,:]
+        s=MYimst[9:-1,:,:]
 
     if (FLAGS.use_phase == True):    
         pass
@@ -51,12 +53,13 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     #image_input = tf.cast(image_input, tf.complex64)
     #image_output = tf.cast(image_output, tf.complex64)
     # normalized to max 1
-    image_input = tf.cast(tf.reduce_max(tf.abs(image_input)), tf.complex64)
-    image_output = tf.cast(tf.reduce_max(tf.abs(image_output)), tf.complex64)
+    ##image_input = tf.cast(tf.reduce_max(tf.abs(image_input)), tf.complex64)
+    ##image_output = tf.cast(tf.reduce_max(tf.abs(image_output)), tf.complex64)
 
     print('image_input_complex size', image_input.get_shape())
     print('image_output_complex size', image_output.get_shape())
-
+    print('sens map size',s.get_shape())
+    print('MY size',MY.get_shape())
     image_zpad_real = tf.real(image_input)
     image_zpad_real = tf.reshape(image_zpad_real, [image_size[0], image_size[1], 1])
     image_zpad_imag = tf.imag(image_input)
@@ -87,5 +90,9 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
                                       name = 'labels_and_features')
 
     tf.train.start_queue_runners(sess=sess)
-      
-    return image_in, MY, s, image_labels #, masks: move read mat to model  
+    
+    return image_in, MY, s, image_labels 
+
+def read_npy(name):
+    data=np.load(name.decode())
+    return data
