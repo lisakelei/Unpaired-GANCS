@@ -247,13 +247,13 @@ def _train():
     
     # Add some noise during training (think denoising autoencoders)
     noise_level = .00
-    noisy_train_features = None#train_features + tf.random_normal(train_features.get_shape(), stddev=noise_level)
+    noisy_train_features = train_features + tf.random_normal(train_features.get_shape(), stddev=noise_level)
 
     # Create and initialize model
-    [gene_minput, gene_mMY,gene_ms,gene_moutput, gene_output, gene_var_list, gene_layers, gene_mlayers, disc_real_output, disc_fake_output, disc_var_list] = \  #, disc_layers_X, disc_layers_Z
+    [gene_minput, gene_mMY,gene_ms,gene_moutput, gene_output, gene_var_list, gene_layers, gene_mlayers, disc_real_output, disc_fake_output, disc_var_list] = \
             wgancs_model.create_model(sess, noisy_train_features, train_labels, train_masks, train_MY, train_s, architecture=FLAGS.architecture)
 
-    gene_loss, gene_dc_loss, gene_ls_loss, list_gene_losses = \
+    gene_loss, gene_mse_loss, gene_dc_loss, _list_gene_losses = \
                      wgancs_model.create_generator_loss(disc_fake_output, gene_output, train_features, train_labels, train_masks) #,disc_layers_X, disc_layers_Z)
     
     # WGAN-GP

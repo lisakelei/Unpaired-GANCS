@@ -548,33 +548,33 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
 
         # add dc layers
         # get output and input
-        last_layer = model.outputs[-1]
-        last_layer = tf.cast(last_layer[:,:,:,0]+1j*last_layer[:,:,:,1], tf.complex64)* s                              
+        last_layer = tf.cast(model.outputs[-1],tf.complex64)
+        last_layer = (last_layer[:,:,:,0]+1j*last_layer[:,:,:,1])* s 
+        
         # compute kspace
-        gene_kspace = Fourier(last_layer, separate_complex=True)                
+        gene_kspace = tf.fft2d(last_layer)                
         # affine projection
         corrected_kspace =  MY + gene_kspace * (1.0 - mask_kspace)
         # inverse fft
-            corrected_complex = tf.ifft2d(corrected_kspace)*(s.conj())
-            corrected_complex = tf.reduce_sum(corrected_complex,axis=0)
-            print('corrected_complex shape',corrected_complex)
-            image_size = tf.shape(corrected_complex)
+        corrected_complex = tf.ifft2d(corrected_kspace)*tf.conj(s)
+        corrected_complex = tf.reduce_sum(corrected_complex,axis=0)
+        image_size = tf.shape(corrected_complex)
        
-            ## get abs
-            #corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
-            
-            #get real and imaginary parts
-            corrected_real = tf.reshape(tf.real(corrected_complex), [FLAGS.batch_size, image_size[1], image_size[2], 1])
-            corrected_imag = tf.reshape(tf.imag(corrected_complex), [FLAGS.batch_size, image_size[1], image_size[2], 1])
+        ## get abs
+        #corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
+          
+        #get real and imaginary parts
+        corrected_real = tf.reshape(tf.real(corrected_complex), [FLAGS.batch_size, image_size[1], image_size[2], 1])
+        corrected_imag = tf.reshape(tf.imag(corrected_complex), [FLAGS.batch_size, image_size[1], image_size[2], 1])
            
-            #print('size_corrected_real', corrected_real.get_shape())
-            corrected_real_concat = tf.concat([corrected_real, corrected_imag], axis=3)
-            #print('corrected_concat', corrected_real_concat.get_shape())
-            #print('channels', channels)
+        #print('size_corrected_real', corrected_real.get_shape())
+        corrected_real_concat = tf.concat([corrected_real, corrected_imag], axis=3)
+        #print('corrected_concat', corrected_real_concat.get_shape())
+        #print('channels', channels)
 
-            model.add_layer(corrected_real_concat)
+        model.add_layer(corrected_real_concat)
   
-            # model.add_sigmoid()
+        # model.add_sigmoid()
 
         #print('variational network with DC correction', model.outputs)
 
@@ -600,8 +600,8 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
     channels  = int(features.get_shape()[3])
 
     gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
-    gene_mMY = tf.placeholder(tf.complex64, shape=[FLAGS.batch_size, 8, rows, cols,channels])
-    gene_ms = tf.placeholder(tf.complex64, shape=[FLAGS.batch_size, 8, rows, cols,channels])
+    gene_mMY = tf.placeholder(tf.complex64, shape=[FLAGS.batch_size, 8, rows, cols])
+    gene_ms = tf.placeholder(tf.complex64, shape=[FLAGS.batch_size, 8, rows, cols])
 
     if (FLAGS.sampling_pattern!="nomask"):
         function_generator = lambda x,y,z,w: _generator_model_with_scale(sess,x,y,z,w,
@@ -831,7 +831,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     
     if FLAGS.wgan_gp:
         gene_wgan_gp_loss = -tf.reduce_mean(disc_output)   # wgan gene loss
-        gene_fool_loss = (1.0 - FLAGS.gene_log_factor) * gene_wgan_gp_loss
+        gene_fool_loss = gene_wgan_gp_loss
     else:
         # generator fool descriminator loss: gan LS or log loss
         gene_fool_loss = (1.0 - FLAGS.gene_log_factor) * gene_ls_loss
@@ -840,25 +840,22 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     gene_non_mse_l2     = tf.add((1.0 - FLAGS.gene_dc_factor) * gene_fool_loss,
                            FLAGS.gene_dc_factor * gene_dc_loss, name='gene_nonmse_l2')
     
-    
-    gene_mse_factor  = tf.placeholder(dtype=tf.float32, name='gene_mse_factor')
-
 
     #total loss = fool-loss + data consistency loss + mse forward-passing loss
     
     #gene_mse_factor as a parameter
-    gene_loss     = tf.add((1.0 - gene_mse_factor) * gene_non_mse_l2, gene_mse_factor * gene_mixmse_loss, name='gene_loss')
+    gene_loss     = gene_non_mse_l2
     # use feature matching
     if FLAGS.FM:
-        ##gene_loss+=0.5*tf.reduce_mean((X[0]-Z[0])*(X[0]-Z[0]))+0.5*tf.reduce_mean((X[1]-Z[1])*(X[1]-Z[1]))
+        pass##gene_loss+=0.5*tf.reduce_mean((X[0]-Z[0])*(X[0]-Z[0]))+0.5*tf.reduce_mean((X[1]-Z[1])*(X[1]-Z[1]))
     # log to tensorboard
     tf.summary.scalar('gene_fool_loss', gene_non_mse_l2)
     tf.summary.scalar('gene_L1_loss', gene_mixmse_loss)
-
+    tf.summary.scalar('gene_dc_loss',gene_dc_loss)
     #list of loss (dummy)
     list_gene_lose = None#[gene_dc_loss, gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
-    return gene_loss, gene_dc_loss, gene_fool_loss, list_gene_lose
+    return gene_loss, gene_mixmse_loss, gene_dc_loss, list_gene_lose
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = None, fake_data = None):

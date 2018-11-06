@@ -161,10 +161,14 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
     # update: get all test features
     list_test_features = []
     list_test_labels = []
+    list_test_s=[]
+    list_test_MY=[]
     for batch_test in range(int(num_batch_test)):
-        test_feature, test_label = td.sess.run([td.test_features, td.test_labels])
+        test_feature, test_label, test_s,test_MY = td.sess.run([td.test_features, td.test_labels,td.test_s,td.test_MY])
         list_test_features.append(test_feature)
         list_test_labels.append(test_label)
+        list_test_s.append(test_s)
+        list_test_MY.append(test_MY)
     print('prepare {0} test feature batches'.format(num_batch_test))
     # print([type(x) for x in list_test_features])
     # print([type(x) for x in list_test_labels])
@@ -177,34 +181,16 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
         gene_ls_loss = gene_dc_loss = gene_loss = disc_real_loss = disc_fake_loss = -1.234
 
         #first train based on MSE and then GAN
-        if batch < FLAGS.mse_batch:
-           feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 1}
-        elif batch <FLAGS.mse_batch+200:
-           feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : (FLAGS.mse_batch+200-batch)/float(200) } # for0.8: -0.001*batch + 4 }, for0.1: -0.0045*batch + 14.5 } 
-        else:
-	   #get rid of MSE loss
-           feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 0 }
-
-        
-        # for training 
-        # don't export var and layers for train to reduce size
-        # move to later
-        # ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.disc_real_loss, td.disc_fake_loss, 
-        #        td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
-        # _, _, gene_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
+        feed_dict = {td.learning_rate : lrval }
 
 	# train disc multiple times
         for disc_iter in range(0):
             td.sess.run([td.disc_minimize],feed_dict=feed_dict)
 	# then train both disc and gene once
-        ops = [td.gene_minimize, td.disc_minimize, summary_op, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, td.list_gene_losses]                   
-        _, _, fet_sum,gene_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss, list_gene_losses = td.sess.run(ops, feed_dict=feed_dict)
+        ops = [td.gene_minimize, td.disc_minimize, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
+        _, _, fet_sum,gene_loss, gene_mse_loss, gene_dc_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
         sum_writer.add_summary(fet_sum,batch)
         
-        # get all losses
-        list_gene_losses = [float(x) for x in list_gene_losses]
-        gene_mse_loss = list_gene_losses[1]   
-
         # verbose training progress
         if batch % 30 == 0:
             # Show we are alive
@@ -232,9 +218,11 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
                 # get test feature
                 test_feature = list_test_features[index_batch_test]
                 test_label = list_test_labels[index_batch_test]
-            
+                test_s=list_test_s[index_batch_test]
+                test_MY=list_test_MY[index_batch_test]
+
                 # Show progress with test features
-                feed_dict = {td.gene_minput: test_feature}
+                feed_dict = {td.gene_minput: test_feature, td.gene_ms:test_s, td.gene_mMY:test_MY}
                 # not export var
                 # ops = [td.gene_moutput, td.gene_mlayers, td.gene_var_list, td.disc_var_list, td.disc_layers]
                 # gene_output, gene_layers, gene_var_list, disc_var_list, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
@@ -255,7 +243,6 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
                 # save record
                 gene_param = {'train_log':err_log,
                               'train_loss':accumuated_err_loss,
-                              'gene_loss':list_gene_losses,
                               'inference_time':inference_time,
                               'gene_layers':[x.tolist() for x in gene_layers if x.shape[-1]<10]}                
                 # gene layers are too large
