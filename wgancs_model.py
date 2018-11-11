@@ -354,7 +354,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid
     # to study the kspace distribution/smoothness properties
 
     # Fully convolutional model
-    mapsize = 5
+    mapsize = 3
     layers  = [4, 8, 16, 32]#[8, 16, 32, 64]#[64, 128, 256, 512]
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
     
@@ -489,8 +489,8 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
     # Upside-down all-convolutional resnet
     channels = 2
     #image_size = tf.shape(features)
-    mapsize = 5
-    res_units  = [128,128,64,64,64] #[128]*5 #[64, 32, 16]#[256, 128, 96]
+    mapsize = 3
+    res_units  = [128,64,64,64,64] #[128]*5 #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0]*5
     print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -510,7 +510,7 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
         if scale_changes[ru]>0:
             model.add_upscale()
 
-        model.add_batch_norm()
+        #-->model.add_batch_norm()
         if (FLAGS.activation_G=='lrelu'):
             model.add_lrelu()
         else:
@@ -552,13 +552,12 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
             last_layer = tf.cast(model.outputs[-1],tf.complex64)
             last_layer = tf.reshape(last_layer[:,:,:,0]+1j*last_layer[:,:,:,1],[FLAGS.batch_size,1,256,320])* s 
         # compute kspacei
-            gene_kspace = tf.fft2d(last_layer)               
-            print('last_layer! ',gene_kspace)
+            gene_kspace = fftshift(tf.fft2d(fftshift(last_layer)))    
  
         # affine projection
-            corrected_kspace =  MY + gene_kspace * (1.0 - mask_kspace)
+            corrected_kspace =  mask_kspace*MY + gene_kspace * (1.0 - mask_kspace)
         # inverse fft
-            corrected_complex = fftshift(tf.ifft2d(fftshift(corrected_kspace,axis=(2,3))),axis=(2,3))*tf.conj(s)
+            corrected_complex = fftshift(tf.ifft2d(fftshift(corrected_kspace)))*tf.conj(s)
             corrected_complex = tf.reduce_sum(corrected_complex,axis=1)
 
         else:
