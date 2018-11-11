@@ -131,7 +131,7 @@ tf.app.flags.DEFINE_integer('label_size_x', -1,
 tf.app.flags.DEFINE_integer('summary_period', 2000,
                             "Number of batches between summary data dumps")
 
-tf.app.flags.DEFINE_integer('summary_train_period', 100,
+tf.app.flags.DEFINE_integer('summary_train_period', -1,
                             "Number of batches between train data dumps")
 
 tf.app.flags.DEFINE_bool('permutation_split', False,

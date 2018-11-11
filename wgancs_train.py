@@ -9,7 +9,6 @@ from scipy.io import savemat
 import wgancs_model
 
 FLAGS = tf.app.flags.FLAGS
-OUTPUT_TRAIN_SAMPLES = 0
 
 def _summarize_progress(train_data, feature, label, gene_output, 
                         batch, suffix, max_samples=8, gene_param=None):
@@ -19,70 +18,54 @@ def _summarize_progress(train_data, feature, label, gene_output,
     size = [label.shape[1], label.shape[2]]
 
     # complex input zpad into r and channel
-    complex_zpad = tf.image.resize_nearest_neighbor(feature, size)
-    complex_zpad = tf.maximum(tf.minimum(complex_zpad, 1.0), 0.0)
+    complex_zpad = feature 
 
     # zpad magnitude
     if FLAGS.use_phase==True:
       mag_zpad = tf.sqrt(complex_zpad[:,:,:,0]**2+complex_zpad[:,:,:,1]**2)
     else:
       mag_zpad = tf.sqrt(complex_zpad[:,:,:,0]**2)
-    mag_zpad = tf.maximum(tf.minimum(mag_zpad, 1.0), 0.0)
-    mag_zpad = tf.reshape(mag_zpad, [FLAGS.batch_size,size[0],size[1],1])
-    mag_zpad = tf.concat(axis=3, values=[mag_zpad, mag_zpad])
     
     # output image
     if FLAGS.use_phase==True:
       gene_output_complex = tf.complex(gene_output[:,:,:,0],gene_output[:,:,:,1])
     else:
       gene_output_complex = gene_output
-    mag_output = tf.maximum(tf.minimum(tf.abs(gene_output_complex), 1.0), 0.0)
-    mag_output = tf.reshape(mag_output, [FLAGS.batch_size, size[0], size[1], 1])
-    #print('size_mag_output', mag)
-    mag_output = tf.concat(axis=3, values=[mag_output, mag_output])
+    mag_output=tf.abs(gene_output_complex)#print('size_mag_output', mag)
 
     if FLAGS.use_phase==True:
       label_complex = tf.complex(label[:,:,:,0], label[:,:,:,1])
     else:
       label_complex = label
-    label_mag = tf.abs(label_complex)
-    label_mag = tf.reshape(label_mag, [FLAGS.batch_size, size[0], size[1], 1])
-    mag_gt = tf.concat(axis=3, values=[label_mag, label_mag]) #size (8, 160, 128, 2) 
+    mag_gt = tf.abs(label_complex)
     
     # calculate SSIM SNR and MSE for test images
-    signal=mag_gt[:,20:size[0]-20,14:size[1]-14,:]    # crop out edges
-    Gout=mag_output[:,20:size[0]-20,14:size[1]-14,:]
-    SSIM=wgancs_model.loss_DSSIS_tf11(signal, Gout)
-    signal=tf.reshape(signal[:,:,:,0],(FLAGS.batch_size,-1))   # and flatten
-    Gout=tf.reshape(Gout[:,:,:,0],(FLAGS.batch_size,-1))    
+    signal=mag_gt[:,20:size[0]-20,14:size[1]-14]    # crop out edges
+    Gout=mag_output[:,20:size[0]-20,14:size[1]-14]
+    SSIM=tf.convert_to_tensor(0)#wgancs_model.loss_DSSIS_tf11(signal, Gout)
+    signal=tf.reshape(signal,(FLAGS.batch_size,-1))   # and flatten
+    Gout=tf.reshape(Gout,(FLAGS.batch_size,-1))    
     s_G=tf.abs(signal-Gout)
     SNR_output = 10*tf.reduce_sum(tf.log(tf.reduce_sum(signal**2,axis=1)/tf.reduce_sum(s_G**2,axis=1)))/tf.log(10.0)/FLAGS.batch_size
     MSE=tf.reduce_mean(s_G)   
     
     # concate for visualize image
     if FLAGS.use_phase==True:
-      image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,abs(mag_gt-mag_output)])
+      image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,10*abs(mag_gt-mag_output)])
     else:
       image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,abs(mag_gt-mag_zpad)])
-    image = image[0:max_samples,:,:,:]
-    tbimage=tf.concat([image,tf.expand_dims(tf.maximum(image[:,:,:,0],image[:,:,:,1]),-1)],3)
-    #tbimage=tf.expand_dims(image[4:6,:,:,0],-1)
-    #tbimage=tf.summary.image('testout',tbimage,2)
-    image = tf.concat(axis=0, values=[image[i,:,:,:] for i in range(int(max_samples))])
-    image,snr,mse,ssim = td.sess.run([image,SNR_output,MSE,SSIM])
-    print('save to image size ', image.shape, 'type ', type(image))
-    # 3rd channel for visualization
-    mag_3rd = np.maximum(image[:,:,0],image[:,:,1])
-    image = np.concatenate((image, mag_3rd[:,:,np.newaxis]),axis=2)
-
+    image = image[0:max_samples,:,:]
+    tbimage=tf.expand_dims(image,-1)
+    image = tf.concat(axis=0, values=[image[i,:,:] for i in range(int(max_samples))])
+    image,snr,mse,ssim,igt = td.sess.run([image,SNR_output,MSE,SSIM,mag_gt])
     # save to image file
     filename = 'batch%06d_%s.png' % (batch, suffix)
     filename = os.path.join(FLAGS.train_dir, filename)
     try:
-      scipy.misc.toimage(image, cmin=0., cmax=1.).save(filename)
+      scipy.misc.toimage(image,cmax=np.amax(igt),cmin=0).save(filename)
     except:
       import pilutil
-      pilutil.toimage(image, cmin=0., cmax=1.).save(filename)
+      pilutil.toimage(image,cmax=np.amax(igt),cmin=0).save(filename)
     print("    Saved %s" % (filename,))
 
     #gene_output_abs = np.abs(gene_output)
@@ -137,7 +120,7 @@ def _save_checkpoint(train_data, batch):
 
     print("Checkpoint saved:",filename)
 
-def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=116):
+def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116):
     td = train_data
     #summary_op = td.summary_op
 
@@ -192,7 +175,7 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
         sum_writer.add_summary(fet_sum,batch)
         
         # verbose training progress
-        if batch % 30 == 0:
+        if batch % 10 == 0:
             # Show we are alive
             elapsed = int(time.time() - start_time)/60
             err_log = 'Elapsed[{0:3f}], Batch [{1:1f}], G_Loss[{2}], G_mse_Loss[{3:3.3f}], G_LS_Loss[{4:3.3f}], G_DC_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(elapsed, batch, gene_loss, gene_mse_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss)
@@ -266,13 +249,13 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
             write_summary(Snr,'SNR',sum_writer,batch) 
             print('SNR: ',Snr,'MSE: ',mse/num_batch_test,'SSIM: ',ssim/num_batch_test)
         # export train batches
-        if OUTPUT_TRAIN_SAMPLES and (batch % FLAGS.summary_train_period == 0):
+        if FLAGS.summary_train_period>0 and (batch % FLAGS.summary_train_period == 0):
             # get train data
-            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, 
+            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, 
                    td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
-            _, _, gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
+            _, _, gene_loss, gene_dc_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
             print('train sample size:',train_feature.shape, train_label.shape, train_output.shape)
-            _summarize_progress(td, train_feature, train_label, train_output, batch%num_batch_train, 'train')
+            _summarize_progress(td, train_feature, train_label, train_output, batch%num_batch_train, 'train',max_samples=4)
 
         
         # export check points
