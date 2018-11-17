@@ -570,7 +570,7 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
 
         image_size = tf.shape(corrected_complex)
        
-        ## get abs
+        # get abs
         #corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
           
         #get real and imaginary parts

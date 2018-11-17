@@ -206,10 +206,10 @@ def _train():
     # Permutate train and test split (SEPARATE FOLDERS)
     index_permutation_split = random.sample(range(num_filename_train), num_filename_train)
     filenames_input_train = [filenames_input_train[x] for x in index_permutation_split]
-    if FLAGS.dataset_label != FLAGS.dataset_train:  
+    '''if FLAGS.dataset_label != FLAGS.dataset_train:  
         index_permutation_split = random.sample(range(len(filenames_output_train)), num_filename_train)
     elif FLAGS.permutation_split:
-        index_permutation_split = random.sample(range(num_filename_train), num_filename_train)      
+        index_permutation_split = random.sample(range(num_filename_train), num_filename_train)'''      
     filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
 
     print("First three filenames_output_Test",filenames_input_test[0:3])
@@ -222,14 +222,10 @@ def _train():
     test_filenames_input  = filenames_input_test[:FLAGS.sample_test]
 
     # get undersample mask
-    try:
-        content_mask = sio.loadmat(FLAGS.sampling_pattern)
-        key_mask = [x for x in content_mask.keys() if not x.startswith('_')]
-        mask = content_mask[key_mask[0]].T
-        train_masks=tf.convert_to_tensor(mask)
-    except:
-        mask = None
-        print("[warining] NO MASK PATTERN!!!")
+    content_mask = sio.loadmat(FLAGS.sampling_pattern)
+    key_mask = [x for x in content_mask.keys() if not x.startswith('_')]
+    mask = content_mask[key_mask[0]].T
+    train_masks=tf.convert_to_tensor(mask)
     # Setup async input queues
     train_features, train_MY, train_s, train_labels = wgancs_input.setup_inputs_one_sources(sess, train_filenames_input, 
                                                              train_filenames_output, image_size=image_size, label_size=label_size,
