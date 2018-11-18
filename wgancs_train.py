@@ -10,7 +10,7 @@ import wgancs_model
 
 FLAGS = tf.app.flags.FLAGS
 
-def _summarize_progress(train_data, feature, label, gene_output, 
+def _summarize_progress(train_data, feature, label, gene_output,last_layer, 
                         batch, suffix, max_samples=8, gene_param=None):
     
     td = train_data
@@ -51,11 +51,10 @@ def _summarize_progress(train_data, feature, label, gene_output,
     
     # concate for visualize image
     if FLAGS.use_phase==True:
-      image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,70*abs(mag_gt-mag_output)])
+      image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,70*abs(mag_output-mag_zpad),70*abs(mag_gt-mag_output)])
     else:
       image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,abs(mag_gt-mag_zpad)])
     image = image[0:max_samples,:,:]
-    tbimage=tf.expand_dims(image,-1)
     image = tf.concat(axis=0, values=[image[i,:,:] for i in range(int(max_samples))])
     image,snr,mse,ssim,igt = td.sess.run([image,SNR_output,MSE,SSIM,mag_gt])
     # save to image file
@@ -89,7 +88,7 @@ def _summarize_progress(train_data, feature, label, gene_output,
             json.dump(gene_param, outfile)
         print("    Saved %s" % (filename,))
         '''
-    return snr,mse,ssim,tbimage
+    return snr,mse,ssim,tf.abs(last_layer)
 
 def _save_checkpoint(train_data, batch):
     td = train_data
@@ -137,9 +136,6 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
     num_batch_train = num_sample_train / batch_size
     num_batch_test = num_sample_test / batch_size            
 
-    # learning rate
-    assert FLAGS.learning_rate_half_life % 10 == 0
-
     # Cache test features and labels (they are small)    
     # update: get all test features
     list_test_features = []
@@ -175,7 +171,7 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
         sum_writer.add_summary(fet_sum,batch)
         
         # verbose training progress
-        if batch % 10 == 0:
+        if batch % 20 == 0:
             # Show we are alive
             elapsed = int(time.time() - start_time)/60
             err_log = 'Elapsed[{0:3f}], Batch [{1:1f}], G_Loss[{2}], G_mse_Loss[{3:3.3f}], G_LS_Loss[{4:3.3f}], G_DC_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(elapsed, batch, gene_loss, gene_mse_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss)
@@ -226,13 +222,12 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
                 # save record
                 gene_param = {'train_log':err_log,
                               'train_loss':accumuated_err_loss,
-                              'inference_time':inference_time,
-                              'gene_layers':[x.tolist() for x in gene_layers if x.shape[-1]<10]}                
+                              'inference_time':inference_time}                
                 # gene layers are too large
                 if index_batch_test>0:
                     gene_param['gene_layers']=[]
-                snr_b,mse_b,ssim_b,tbimage=_summarize_progress(td, test_feature, test_label, gene_output, batch, 
-                                    'test{0}'.format(index_batch_test),                                     
+                snr_b,mse_b,ssim_b,tbimage=_summarize_progress(td, test_feature, test_label, gene_output, gene_layers,batch, 
+                                    'test%03d'%(index_batch_test),                                     
                                     max_samples = batch_size,
                                     gene_param = gene_param)
                 snr+=snr_b

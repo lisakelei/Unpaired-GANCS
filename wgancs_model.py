@@ -550,10 +550,10 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
         # get output and input
         if 0!=1:
             last_layer = tf.cast(model.outputs[-1],tf.complex64)
-            last_layer = tf.reshape(last_layer[:,:,:,0]+1j*last_layer[:,:,:,1],[FLAGS.batch_size,1,256,320])* s 
-        # compute kspacei
-            gene_kspace = fftshift(tf.fft2d(fftshift(last_layer)))    
- 
+            last_layer = tf.reshape(last_layer[:,:,:,0]+1j*last_layer[:,:,:,1],[FLAGS.batch_size,1,256,320]) 
+        # compute kspace
+            gene_kspace = fftshift(tf.fft2d(fftshift(last_layer*s)))    
+            last_layer =tf.reshape(last_layer,[FLAGS.batch_size,256,320,1])
         # affine projection
             corrected_kspace =  mask_kspace*MY + gene_kspace * (1.0 - mask_kspace)
         # inverse fft
@@ -569,7 +569,7 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
             corrected_complex = tf.ifft2d(corrected_kspace)
 
         image_size = tf.shape(corrected_complex)
-       
+
         # get abs
         #corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
           
@@ -593,7 +593,7 @@ def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5
     gene_vars = list(set(new_vars) - set(old_vars))
 
     # select subset of layers
-    output_layers = [model.outputs[0]] + model.outputs[1:-1][::layer_output_skip] + [model.outputs[-1]]
+    output_layers = last_layer#[model.outputs[0]] + model.outputs[1:-1][::layer_output_skip] + [model.outputs[-1]]
 
     return model.get_output(), gene_vars, output_layers
 
@@ -629,7 +629,7 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
         gene_output_real = gene_output_1
         gene_output = tf.reshape(gene_output_real, [FLAGS.batch_size, rows, cols, 2])
         gene_layers = gene_layers_1
-
+        tf.summary.image('gene_train_last',abs(gene_layers),2)
         
         if FLAGS.use_phase == True:
           pass
@@ -854,7 +854,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     #total loss = fool-loss + data consistency loss + mse forward-passing loss
     
     #gene_mse_factor as a parameter
-    gene_loss     = gene_non_mse_l2
+    gene_loss     = gene_non_mse_l2#mixmse_loss#non_mse_l2
     # use feature matching
     if FLAGS.FM:
         pass##gene_loss+=0.5*tf.reduce_mean((X[0]-Z[0])*(X[0]-Z[0]))+0.5*tf.reduce_mean((X[1]-Z[1])*(X[1]-Z[1]))
