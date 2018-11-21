@@ -10,7 +10,7 @@ import wgancs_model
 
 FLAGS = tf.app.flags.FLAGS
 
-def _summarize_progress(train_data, feature, label, gene_output,last_layer, 
+def _summarize_progress(train_data, feature, label, gene_output, 
                         batch, suffix, max_samples=8, gene_param=None):
     
     td = train_data
@@ -88,7 +88,7 @@ def _summarize_progress(train_data, feature, label, gene_output,last_layer,
             json.dump(gene_param, outfile)
         print("    Saved %s" % (filename,))
         '''
-    return snr,mse,ssim,tf.abs(last_layer)
+    return snr,mse,ssim
 
 def _save_checkpoint(train_data, batch):
     td = train_data
@@ -226,14 +226,14 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
                 # gene layers are too large
                 if index_batch_test>0:
                     gene_param['gene_layers']=[]
-                snr_b,mse_b,ssim_b,tbimage=_summarize_progress(td, test_feature, test_label, gene_output, gene_layers,batch, 
+                snr_b,mse_b,ssim_b=_summarize_progress(td, test_feature, test_label, gene_output, batch, 
                                     'test%03d'%(index_batch_test),                                     
                                     max_samples = batch_size,
                                     gene_param = gene_param)
                 snr+=snr_b
                 mse+=mse_b
                 ssim+=ssim_b
-                tbimage=tf.summary.image('testout',tbimage,2)
+                tbimage=tf.summary.image('testout',tf.abs(gene_layers),2)
                 sum_writer.add_summary(td.sess.run(tbimage))
                 # try to reduce mem
                 gene_output = None

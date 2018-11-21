@@ -80,7 +80,6 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
       label   = abs(image_output)
       feature = abs(image_input)
     
-    # -> mask = tf.reshape(DEFAULT_MAKS_TF_c, [image_size[0], image_size[1]])
 
     # Using asynchronous queues
     image_in, MY, s, image_labels = tf.train.batch([feature,MY,s, label],

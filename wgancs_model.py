@@ -485,7 +485,7 @@ def Fourier(x, separate_complex=True):
     return y_complex
 
 
-def _generator_model_with_scale(sess, features, masks, MY,s, layer_output_skip=5, num_dc_layers=0):
+def _generator_model_with_scale(sess, features, masks, MY,s,norm_adj, layer_output_skip=5, num_dc_layers=0):
     # Upside-down all-convolutional resnet
     channels = 2
     #image_size = tf.shape(features)
@@ -614,16 +614,16 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
     gene_ms = tf.placeholder(tf.complex64, shape=[FLAGS.batch_size, 8, rows, cols])
 
     if (FLAGS.sampling_pattern!="nomask"):
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(sess,x,y,z,w,
+        function_generator = lambda x,y,z,w,v: _generator_model_with_scale(sess,x,y,z,w,v,
                                                 num_dc_layers=0, layer_output_skip=7)
     else:  # with unmasked input, remove dc
-        function_generator = lambda x,y,z,w: _generator_model_with_scale(sess,x,y,z,w,
+        function_generator = lambda x,y,z,w,v: _generator_model_with_scale(sess,x,y,z,w,v,
                                                 num_dc_layers=-1, layer_output_skip=7)
 
 
     with tf.variable_scope('gene') as scope:
 
-        gene_output_1, gene_var_list, gene_layers_1 = function_generator(features, masks, MY, s,)                      
+        gene_output_1, gene_var_list, gene_layers_1 = function_generator(features, masks, MY, s,1.52)                      
         scope.reuse_variables()
 
         gene_output_real = gene_output_1
@@ -642,7 +642,7 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
 
 
         # for testing input
-        gene_moutput_1, _ , gene_mlayers_1 = function_generator(gene_minput, masks, gene_mMY,gene_ms)
+        gene_moutput_1, _ , gene_mlayers_1 = function_generator(gene_minput, masks, gene_mMY,gene_ms,1.0)
         scope.reuse_variables()
 
         
