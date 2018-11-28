@@ -40,31 +40,32 @@ def _summarize_progress(train_data, feature, label, gene_output,
     mag_gt = tf.abs(label_complex)
     
     # calculate SSIM SNR and MSE for test images
-    signal=mag_gt[:,20:size[0]-20,14:size[1]-14]    # crop out edges
-    Gout=mag_output[:,20:size[0]-20,14:size[1]-14]
-    SSIM=tf.convert_to_tensor(0)#wgancs_model.loss_DSSIS_tf11(signal, Gout)
+    signal=mag_gt[:,20:size[0]-20,24:size[1]-24]    # crop out edges
+    Gout=mag_output[:,20:size[0]-20,24:size[1]-24]
+    SSIM=tf.reduce_mean(tf.image.ssim(tf.expand_dims(signal,-1), tf.expand_dims(Gout,-1),max_val=1.0))    
     signal=tf.reshape(signal,(FLAGS.batch_size,-1))   # and flatten
     Gout=tf.reshape(Gout,(FLAGS.batch_size,-1))    
     s_G=tf.abs(signal-Gout)
     SNR_output = 10*tf.reduce_sum(tf.log(tf.reduce_sum(signal**2,axis=1)/tf.reduce_sum(s_G**2,axis=1)))/tf.log(10.0)/FLAGS.batch_size
     MSE=tf.reduce_mean(s_G)   
     
+
     # concate for visualize image
     if FLAGS.use_phase==True:
-      image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,50*abs(mag_output-mag_zpad),70*abs(mag_gt-mag_output)])
+      image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,50*abs(mag_output-mag_zpad),50*abs(mag_gt-mag_output)])
     else:
       image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,abs(mag_gt-mag_zpad)])
     image = image[0:max_samples,:,:]
     image = tf.concat(axis=0, values=[image[i,:,:] for i in range(int(max_samples))])
-    image,snr,mse,ssim,igt = td.sess.run([image,SNR_output,MSE,SSIM,mag_gt])
+    image,snr,mse,ssim= td.sess.run([image,SNR_output,MSE,SSIM])
     # save to image file
     filename = 'batch%06d_%s.png' % (batch, suffix)
     filename = os.path.join(FLAGS.train_dir, filename)
     try:
-      scipy.misc.toimage(image,cmax=np.amax(igt),cmin=0).save(filename)
+      scipy.misc.toimage(image,cmax=1.0,cmin=0).save(filename)
     except:
       import pilutil
-      pilutil.toimage(image,cmax=np.amax(igt),cmin=0).save(filename)
+      pilutil.toimage(image,cmax=1.0,cmin=0).save(filename)
     print("    Saved %s" % (filename,))
 
     #gene_output_abs = np.abs(gene_output)
