@@ -241,9 +241,11 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
                 gene_layers = None
                 #disc_layers = None
                 accumuated_err_loss = []
-                Snr=snr/num_batch_test
-            write_summary(Snr,'SNR',sum_writer,batch) 
-            print('SNR: ',Snr,'MSE: ',mse/num_batch_test,'SSIM: ',ssim/num_batch_test)
+            Snr=snr/num_batch_test
+            ssim=ssim/num_batch_test
+            write_summary(Snr,'SNR',sum_writer,batch)
+            write_summary(ssim,'SSIM',sum_writer,batch) 
+            print('SNR: ',Snr,'MSE: ',mse/num_batch_test,'SSIM: ',ssim)
         # export train batches
         if FLAGS.summary_train_period>0 and (batch % FLAGS.summary_train_period == 0):
             # get train data

@@ -490,7 +490,7 @@ def _generator_model_with_scale(sess, features, masks, MY,s,norm_adj, layer_outp
     channels = 2
     #image_size = tf.shape(features)
     mapsize = 3
-    res_units  = [128,64,64,64,64] #[128]*5 #[64, 32, 16]#[256, 128, 96]
+    res_units  = [64,64,64,64,64] #[128]*5 #[64, 32, 16]#[256, 128, 96]
     scale_changes = [0]*5
     print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
@@ -861,7 +861,6 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     # log to tensorboard
     tf.summary.scalar('gene_fool_loss', gene_non_mse_l2)
     tf.summary.scalar('gene_L1_loss', gene_mixmse_loss)
-    tf.summary.scalar('gene_dc_loss',gene_dc_loss)
     #list of loss (dummy)
     list_gene_lose = None#[gene_dc_loss, gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
