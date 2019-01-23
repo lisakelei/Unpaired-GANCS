@@ -61,8 +61,9 @@ def _summarize_progress(train_data, feature, label, gene_output,
     # save to image file
     filename = 'batch%06d_%s.png' % (batch, suffix)
     filename = os.path.join(FLAGS.train_dir, filename)
+    #np.save(filename,image) 
     try:
-      scipy.misc.toimage(image,cmax=1.0,cmin=0).save(filename)
+      scipy.misc.toimage(image,cmax=4936,cmin=0).save(filename)
     except:
       import pilutil
       pilutil.toimage(image,cmax=1.0,cmin=0).save(filename)
