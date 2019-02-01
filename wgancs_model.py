@@ -828,15 +828,16 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
 
 
     # mse loss
-    gene_l1_loss  = tf.reduce_mean(tf.abs(gene_output - labels), name='gene_l1_loss')
-    '''
-    gene_l2_loss  = tf.reduce_mean(tf.square(gene_output - labels), name='gene_l2_loss')
-    gene_mse_loss = tf.add(FLAGS.gene_l1l2_factor * gene_l1_loss, 
+    if FLAGS.supervised==1:
+        gene_mixmse_loss = tf.reduce_mean(tf.abs(gene_output - labels), name='gene_l1_loss')
+    elif FLAGS.supervised==2:
+        gene_mixmse_loss = tf.reduce_mean(tf.square(gene_output-labels),name='gene_l2_loss')
+    '''gene_mse_loss = tf.add(FLAGS.gene_l1l2_factor * gene_l1_loss, 
                         (1.0 - FLAGS.gene_l1l2_factor) * gene_l2_loss, name='gene_mse_loss')
 
     #ssim loss
-    gene_ssim_loss = loss_DSSIS_tf11(labels, gene_output)     '''
-    gene_mixmse_loss = gene_l1_loss #tf.add(FLAGS.gene_ssim_factor * gene_ssim_loss,(1.0 - FLAGS.gene_ssim_factor) * gene_mse_loss, name='gene_mixmse_loss')
+    gene_ssim_loss = loss_DSSIS_tf11(labels, gene_output)     
+    gene_mixmse_loss = tf.add(FLAGS.gene_ssim_factor * gene_ssim_loss,(1.0 - FLAGS.gene_ssim_factor) * gene_mse_loss, name='gene_mixmse_loss')'''
 
     
     if FLAGS.wgan_gp:
