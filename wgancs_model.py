@@ -855,7 +855,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     
     #gene_mse_factor as a parameter
     if FLAGS.supervised>0:
-        gene_loss = mixmse_loss
+        gene_loss = gene_mixmse_loss
     else:
         gene_loss     = gene_non_mse_l2
     # use feature matching
