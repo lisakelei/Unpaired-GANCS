@@ -262,7 +262,6 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
             _save_checkpoint(td, batch)
             snr_prev=Snr
 
-    _save_checkpoint(td, batch)
     print('Finished training!')
 
 def write_summary(value, tag, summary_writer, global_step):
