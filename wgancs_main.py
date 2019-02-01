@@ -134,6 +134,9 @@ tf.app.flags.DEFINE_integer('summary_period', 2000,
 tf.app.flags.DEFINE_integer('summary_train_period', -1,
                             "Number of batches between train data dumps")
 
+tf.app.flags.DEFINE_integer('supervised', -1,
+                            "pixel-wise supervised training if >0")
+
 tf.app.flags.DEFINE_bool('permutation_split', False,
                          "Whether to randomly permutate order of input and label.")
 
@@ -206,10 +209,8 @@ def _train():
     # Permutate train and test split (SEPARATE FOLDERS)
     index_permutation_split = random.sample(range(num_filename_train), num_filename_train)
     filenames_input_train = [filenames_input_train[x] for x in index_permutation_split]
-    if False:#FLAGS.unpaired:  
+    if FLAGS.supervised<0:  
         index_permutation_split = random.sample(range(len(filenames_output_train)), num_filename_train)
-    elif FLAGS.permutation_split:
-        index_permutation_split = random.sample(range(num_filename_train), num_filename_train)      
     filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
 
     print("First three filenames_output_Test",filenames_input_test[0:3])

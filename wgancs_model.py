@@ -854,7 +854,10 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     #total loss = fool-loss + data consistency loss + mse forward-passing loss
     
     #gene_mse_factor as a parameter
-    gene_loss     = gene_non_mse_l2#mixmse_loss#non_mse_l2
+    if FLAGS.supervised>0:
+        gene_loss = mixmse_loss
+    else:
+        gene_loss     = gene_non_mse_l2
     # use feature matching
     if FLAGS.FM:
         pass##gene_loss+=0.5*tf.reduce_mean((X[0]-Z[0])*(X[0]-Z[0]))+0.5*tf.reduce_mean((X[1]-Z[1])*(X[1]-Z[1]))
