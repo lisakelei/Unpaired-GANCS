@@ -828,10 +828,11 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
 
 
     # mse loss
-    if FLAGS.supervised<2:
-        gene_mixmse_loss = tf.reduce_mean(tf.abs(gene_output - labels), name='gene_l1_loss')
-    elif FLAGS.supervised==2:
+    if FLAGS.supervised==2:
         gene_mixmse_loss = tf.reduce_mean(tf.square(gene_output-labels),name='gene_l2_loss')
+    else: 
+        gene_mixmse_loss = tf.reduce_mean(tf.abs(gene_output - labels), name='gene_l1_loss')
+
     '''gene_mse_loss = tf.add(FLAGS.gene_l1l2_factor * gene_l1_loss, 
                         (1.0 - FLAGS.gene_l1l2_factor) * gene_l2_loss, name='gene_mse_loss')
 
@@ -855,7 +856,9 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     #total loss = fool-loss + data consistency loss + mse forward-passing loss
     
     #gene_mse_factor as a parameter
-    if FLAGS.supervised>0:
+    if FLAGS.supervised==3:
+        gene_loss = 0.05*gene_non_mse_l2+gene_mixmse_loss
+    elif FLAGS.supervised>0:
         gene_loss = gene_mixmse_loss
     else:
         gene_loss     = gene_non_mse_l2
