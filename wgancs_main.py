@@ -164,6 +164,9 @@ tf.app.flags.DEFINE_string('train_dir', 'train',
 tf.app.flags.DEFINE_integer('train_time', 1500,
                             "Time in minutes to train the model")
 
+tf.app.flags.DEFINE_integer('unrolled', 0,
+                            "How many unroll iteration to use")
+
 tf.app.flags.DEFINE_bool('use_patches', False,
                             "whether to patch generator output when feeding to disc")
 
@@ -209,7 +212,7 @@ def _train():
     # Permutate train and test split (SEPARATE FOLDERS)
     index_permutation_split = random.sample(range(num_filename_train), num_filename_train)
     filenames_input_train = [filenames_input_train[x] for x in index_permutation_split]
-    if FLAGS.supervised<0:  
+    if False:#FLAGS.supervised<0:  
         index_permutation_split = random.sample(range(len(filenames_output_train)), num_filename_train)
     filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
 

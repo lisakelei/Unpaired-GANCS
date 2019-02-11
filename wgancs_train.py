@@ -164,7 +164,7 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
         feed_dict = {td.learning_rate : lrval }
 
 	# train disc multiple times
-        for disc_iter in range(0):
+        for disc_iter in range(3):
             td.sess.run([td.disc_minimize],feed_dict=feed_dict)
 	# then train both disc and gene once
         ops = [td.gene_minimize, td.disc_minimize, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
@@ -207,11 +207,11 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
                 # ops = [td.gene_moutput, td.gene_mlayers, td.gene_var_list, td.disc_var_list, td.disc_layers]
                 # gene_output, gene_layers, gene_var_list, disc_var_list, disc_layers= td.sess.run(ops, feed_dict=feed_dict)       
                 
-                ops = [td.gene_moutput, td.gene_mlayers]
+                ops = [td.gene_moutput]#, td.gene_mlayers]
                 
                 # get timing
                 forward_passing_time = time.time()
-                gene_output, gene_layers= td.sess.run(ops, feed_dict=feed_dict)       
+                gene_output = td.sess.run(ops, feed_dict=feed_dict)[0]       
                 inference_time = time.time() - forward_passing_time
 		
                 # print('gene_var_list',[x.shape for x in gene_var_list])
@@ -234,8 +234,8 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
                 snr+=snr_b
                 mse+=mse_b
                 ssim+=ssim_b
-                tbimage=tf.summary.image('testout',tf.abs(gene_layers),2)
-                sum_writer.add_summary(td.sess.run(tbimage))
+                ##tbimage=tf.summary.image('testout',tf.abs(gene_layers),2)
+                ##sum_writer.add_summary(td.sess.run(tbimage))
                 # try to reduce mem
                 gene_output = None
                 gene_layers = None

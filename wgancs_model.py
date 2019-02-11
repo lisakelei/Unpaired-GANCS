@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import mri_model
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -355,7 +356,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid
 
     # Fully convolutional model
     mapsize = 3
-    layers  = [4, 8, 16, 32]#[8, 16, 32, 64]#[64, 128, 256, 512]
+    layers  = [8,8, 16,32, 64]#[4, 8, 16, 32]#[8, 16, 32, 64]#[64, 128, 256, 512]
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
     
     # apply dropout to inputs to the disc
@@ -614,22 +615,25 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
     gene_ms = tf.placeholder(tf.complex64, shape=[FLAGS.batch_size, 8, rows, cols])
 
     if (FLAGS.sampling_pattern!="nomask"):
-        function_generator = lambda x,y,z,w,v: _generator_model_with_scale(sess,x,y,z,w,v,
+        function_generator = lambda x,y,z,w: _generator_model_with_scale(sess,x,y,z,w,
                                                 num_dc_layers=0, layer_output_skip=7)
     else:  # with unmasked input, remove dc
-        function_generator = lambda x,y,z,w,v: _generator_model_with_scale(sess,x,y,z,w,v,
+        function_generator = lambda x,y,z,w: _generator_model_with_scale(sess,x,y,z,w,
                                                 num_dc_layers=-1, layer_output_skip=7)
 
-
+    rbs=3
     with tf.variable_scope('gene') as scope:
-
-        gene_output_1, gene_var_list, gene_layers_1 = function_generator(features, masks, MY, s)                      
+        if FLAGS.unrolled>0:
+            gene_output_1 = mri_model.unroll_fista(MY, s, num_grad_steps=FLAGS.unrolled,resblock_num_features=64, resblock_num_blocks=rbs, is_training=True, scope="MRI",mask_output=1, window=None, do_hardproj=True,num_summary_image=0,mask=masks, verbose=False)
+            gene_var_list, gene_layers_1 =None,['empty']
+        else:
+            gene_output_1, gene_var_list, gene_layers_1 = function_generator(features, masks, MY, s)                      
         scope.reuse_variables()
 
         gene_output_real = gene_output_1
         gene_output = tf.reshape(gene_output_real, [FLAGS.batch_size, rows, cols, 2])
         gene_layers = gene_layers_1
-        tf.summary.image('gene_train_last',abs(gene_layers),2)
+        #tf.summary.image('gene_train_last',abs(gene_layers),2)
         
         if FLAGS.use_phase == True:
           pass
@@ -642,7 +646,11 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
 
 
         # for testing input
-        gene_moutput_1, _ , gene_mlayers_1 = function_generator(gene_minput, masks, gene_mMY,gene_ms)
+        if FLAGS.unrolled>0:
+            gene_moutput_1 = mri_model.unroll_fista(gene_mMY, gene_ms, num_grad_steps=FLAGS.unrolled,resblock_num_features=64, resblock_num_blocks=rbs, is_training=False, scope="MRI",mask_output=1, window=None, do_hardproj=True,num_summary_image=0, mask=masks, verbose=False)
+            gene_mlayers_1 =None
+        else:
+            gene_moutput_1, _ , gene_mlayers_1 = function_generator(gene_minput, masks, gene_mMY,gene_ms)
         scope.reuse_variables()
 
         
