@@ -356,7 +356,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid
 
     # Fully convolutional model
     mapsize = 3
-    layers  = [8,8, 16,32, 64]#[4, 8, 16, 32]#[8, 16, 32, 64]#[64, 128, 256, 512]
+    layers  = [4, 8, 16, 32]#[8,8, 16,32, 64]#[4, 8, 16, 32]#[8, 16, 32, 64]#[64, 128, 256, 512]
     old_vars = tf.global_variables()#tf.all_variables() , all_variables() are deprecated
     
     # apply dropout to inputs to the disc
@@ -621,7 +621,7 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
         function_generator = lambda x,y,z,w: _generator_model_with_scale(sess,x,y,z,w,
                                                 num_dc_layers=-1, layer_output_skip=7)
 
-    rbs=3
+    rbs=2
     with tf.variable_scope('gene') as scope:
         if FLAGS.unrolled>0:
             gene_output_1 = mri_model.unroll_fista(MY, s, num_grad_steps=FLAGS.unrolled,resblock_num_features=64, resblock_num_blocks=rbs, is_training=True, scope="MRI",mask_output=1, window=None, do_hardproj=True,num_summary_image=0,mask=masks, verbose=False)
