@@ -67,28 +67,6 @@ def _summarize_progress(train_data, feature, label, gene_output,
       import pilutil
       pilutil.toimage(image,cmax=1.0,cmin=0).save(filename)
     print("    Saved %s" % (filename,))
-
-    #gene_output_abs = np.abs(gene_output)
-    # save layers and var_list
-    if gene_param is not None:
-        #add feature 
-        print('dimension for input, ref, output:',
-              feature.shape, label.shape, gene_output.shape)
-        gene_param['feature'] = feature.tolist()
-        gene_param['label'] = label.tolist()
-        gene_param['gene_output'] = gene_output.tolist()
-        # add input arguments
-        # print(FLAGS.__dict__['__flags'])
-        # gene_param['FLAGS'] = FLAGS.__dict__['__flags']
-
-        # save json
-        '''
-        filename = 'batch%06d_%s.json' % (batch, suffix)
-        filename = os.path.join(FLAGS.train_dir, filename)
-        with open(filename, 'w') as outfile:
-            json.dump(gene_param, outfile)
-        print("    Saved %s" % (filename,))
-        '''
     return snr,mse,ssim
 
 def _save_checkpoint(train_data, batch):
@@ -213,24 +191,9 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
                 forward_passing_time = time.time()
                 gene_output = td.sess.run(ops, feed_dict=feed_dict)[0]       
                 inference_time = time.time() - forward_passing_time
-		
-                # print('gene_var_list',[x.shape for x in gene_var_list])
-                #print('gene_layers',[x.shape for x in gene_layers])
-                #print("test time data consistency:", gene_dc_loss): add td.gene_dc_loss in ops
-                # print('disc_var_list',[x.shape for x in disc_var_list])
-                #print('disc_layers',[x.shape for x in disc_layers])
+                print('TIME:',inference_time)
 
-                # save record
-                gene_param = {'train_log':err_log,
-                              'train_loss':accumuated_err_loss,
-                              'inference_time':inference_time}                
-                # gene layers are too large
-                if index_batch_test>0:
-                    gene_param['gene_layers']=[]
-                snr_b,mse_b,ssim_b=_summarize_progress(td, test_feature, test_label, gene_output, batch, 
-                                    'test%03d'%(index_batch_test),                                     
-                                    max_samples = batch_size,
-                                    gene_param = gene_param)
+                snr_b,mse_b,ssim_b=_summarize_progress(td, test_feature, test_label, gene_output, batch, 'test%03d'%(index_batch_test),max_samples = batch_size)
                 snr+=snr_b
                 mse+=mse_b
                 ssim+=ssim_b
