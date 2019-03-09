@@ -622,7 +622,7 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
                                                 num_dc_layers=-1, layer_output_skip=7)
 
     rbs=2
-    with tf.variable_scope('gene') as scope:
+    with tf.variable_scope('gene',reuse=tf.AUTO_REUSE) as scope:
         if FLAGS.unrolled>0:
             gene_output_1 = mri_model.unroll_fista(MY, s, num_grad_steps=FLAGS.unrolled,resblock_num_features=64, resblock_num_blocks=rbs, is_training=True, scope="MRI",mask_output=1, window=None, do_hardproj=True,num_summary_image=0,mask=masks, verbose=False)
             gene_var_list, gene_layers_1 =None,['empty']
@@ -634,16 +634,7 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
         gene_output = tf.reshape(gene_output_real, [FLAGS.batch_size, rows, cols, 2])
         gene_layers = gene_layers_1
         #tf.summary.image('gene_train_last',abs(gene_layers),2)
-        
-        if FLAGS.use_phase == True:
-          pass
-        else:
-          gene_output_complex = tf.complex(gene_output[:,:,:,0], gene_output[:,:,:,1])
-          gene_output = tf.abs(gene_output_complex)
-          gene_output = tf.reshape(gene_output, [FLAGS.batch_size, rows, cols, 1])
-
         #print('gene_output_train', gene_output.get_shape()) 
-
 
         # for testing input
         if FLAGS.unrolled>0:
@@ -662,54 +653,21 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
         gene_moutput = tf.reshape(gene_moutput_real, [FLAGS.batch_size, rows, cols, 2])
         gene_mlayers = gene_mlayers_1
 
-        if FLAGS.use_phase ==True:
-          pass
-        else:
-          gene_moutput_complex = tf.complex(gene_moutput[:,:,:,0], gene_moutput[:,:,:,1])
-          gene_moutput = tf.abs(gene_moutput_complex)  
-          gene_moutput = tf.reshape(gene_moutput, [FLAGS.batch_size, rows, cols, 1])
-
 
     # Discriminator with real data
-    disc_real_input = tf.identity(labels, name='disc_real_input')
-   
+    if FLAGS.use_phase==True:
+        disc_real_input = tf.identity(labels, name='disc_real_input')
+    else:
+        disc_real_input = tf.abs(tf.identity(labels, name='disc_real_input'))
+
     # TBD: Is there a better way to instance the discriminator?
     with tf.variable_scope('disc',reuse=tf.AUTO_REUSE) as scope:
-        #print('hybrid_disc', FLAGS.hybrid_disc)
-        if FLAGS.use_patches==True:
-            patch_list=[]
-            r=int(FLAGS.sample_size/4)
-            c=int(FLAGS.sample_size_y/4)
-            for i in range(4):
-                for j in range(4):
-                    disc_input_patch=disc_real_input[:, r*i:r*(i+1) ,c*j:c*(j+1), :]
-                    if i==j==0:
-                        disc_real_patch, disc_var_list, disc_layers_X =_discriminator_model(sess, features, disc_input_patch, hybrid_disc=FLAGS.hybrid_disc)
-                    else: 
-                        disc_real_patch,_,_=_discriminator_model(sess, features, disc_input_patch, hybrid_disc=FLAGS.hybrid_disc)
-                    patch_list.append(disc_real_patch)
-            disc_real_output=tf.stack(patch_list)
-            #print("patch and stacked fake_out SHAPE",disc_fake_patch.get_shape(),disc_fake_output.get_shape())
-        else:
-            disc_real_output, disc_var_list, disc_layers_X = \
+        disc_real_output, disc_var_list, disc_layers_X = \
                 _discriminator_model(sess, features, disc_real_input, hybrid_disc=FLAGS.hybrid_disc)
 
         scope.reuse_variables()
         gene_output_abs = tf.abs(gene_output)
-        if FLAGS.use_patches==True:
-            patch_list=[]
-            r=int(FLAGS.sample_size/4)
-            c=int(FLAGS.sample_size_y/4)
-            #print("Row Col per patch", r,c)
-            for i in range(4):
-                for j in range(4):
-                    gene_output_patch=gene_output_abs[:, r*i:r*(i+1) ,c*j:c*(j+1) ,:]
-                    disc_fake_patch,_,disc_layers_Z=_discriminator_model(sess, features, gene_output_patch, hybrid_disc=FLAGS.hybrid_disc)
-                    patch_list.append(disc_fake_patch)
-            disc_fake_output=tf.stack(patch_list)
-            #print("patch and stacked fake_out SHAPE",disc_fake_patch.get_shape(),disc_fake_output.get_shape())
-        else:
-            disc_fake_output, _, disc_layers_Z = _discriminator_model(sess, features, gene_output_abs, hybrid_disc=FLAGS.hybrid_disc)
+        disc_fake_output, _, disc_layers_Z = _discriminator_model(sess, features, gene_output_abs, hybrid_disc=FLAGS.hybrid_disc)
 
     return [gene_minput,gene_mMY,gene_ms, gene_moutput, gene_output, gene_var_list, gene_layers, gene_mlayers,
             disc_real_output, disc_fake_output, disc_var_list]#, disc_layers_X, disc_layers_Z]    
@@ -894,35 +852,14 @@ def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = No
         # generate noisy inputs 
         alpha = tf.random_uniform(shape=[FLAGS.batch_size, 1, 1, 1], minval=0.,maxval=1.) 
         interpolates = real_data + alpha*(fake_data - real_data) 
-        if FLAGS.use_patches==True:
-            gp_patch=[]
-            dloss_patch=[]
-            r=int(FLAGS.sample_size/4)
-            c=int(FLAGS.sample_size_y/4)
-            for i in range(4):
-                for j in range(4):
-                    interpolates_patch=interpolates[:, r*i:r*(i+1) ,c*j:c*(j+1), :]
-                    with tf.variable_scope('disc',reuse=tf.AUTO_REUSE) as scope:
-                        interpolates_disc_output, _, _ = _discriminator_model(None,None, interpolates_patch, hybrid_disc=FLAGS.hybrid_disc)
-                        gradients = tf.gradients(interpolates_disc_output, [interpolates_patch])[0] 
-                        gradients = tf.layers.flatten(gradients)  # [batch_size, -1] 
-                    slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))  
-                    gradient_penalty = tf.reduce_mean((slopes - 1.)**2)
-                    disc_loss = tf.add(disc_cost, 10. * gradient_penalty, name='disc_loss')
-                    gp_patch.append(gradient_penalty)
-                    dloss_patch.append(disc_loss)            
-            gp_patch=tf.stack(gp_patch)
-            dloss_patch=tf.stack(dloss_patch)
-            gradient_penalty=tf.reduce_mean(gp_patch)
-            disc_loss=tf.reduce_mean(dloss_patch)
-        else: 
-            with tf.variable_scope('disc', reuse=True) as scope:
-                interpolates_disc_output, _, _ = _discriminator_model(None,None, interpolates, hybrid_disc=FLAGS.hybrid_disc)
-                gradients = tf.gradients(interpolates_disc_output, [interpolates])[0] 
-                gradients = tf.layers.flatten(gradients)  # [batch_size, -1] 
-            slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))  
-            gradient_penalty = tf.reduce_mean((slopes - 1.)**2)
-            disc_loss = tf.add(disc_cost, 10. * gradient_penalty, name='disc_loss')
+        
+        with tf.variable_scope('disc', reuse=True) as scope:
+            interpolates_disc_output, _, _ = _discriminator_model(None,None, interpolates, hybrid_disc=FLAGS.hybrid_disc)
+            gradients = tf.gradients(interpolates_disc_output, [interpolates])[0] 
+            gradients = tf.layers.flatten(gradients)  # [batch_size, -1] 
+        slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))  
+        gradient_penalty = tf.reduce_mean((slopes - 1.)**2)
+        disc_loss = tf.add(disc_cost, 10. * gradient_penalty, name='disc_loss')
 
         tf.summary.scalar('disc_gp_loss',gradient_penalty)        
         tf.summary.scalar('disc_total_loss',disc_loss)
