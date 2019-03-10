@@ -45,11 +45,6 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
         MY=MYimst[0:8,:,:]
         s=MYimst[9:-1,:,:]
 
-    if (FLAGS.use_phase == True):    
-        pass
-    else:
-        image_input=abs(image_input)
-        image_output=abs(image_output)
     #image_input = tf.cast(image_input, tf.complex64)
     #image_output = tf.cast(image_output, tf.complex64)
     # normalized to max 1
@@ -71,14 +66,11 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     image_output_real = tf.real(image_output)
     image_output_real = tf.reshape(image_output_real, [label_size[0], label_size[1], 1]) 
     # split the complex label into real and imaginary channels
-    if (FLAGS.use_phase == True):
+    if True:
       image_output_complex = tf.imag(image_output)
       image_output_complex = tf.reshape(image_output_complex, [label_size[0], label_size[1], 1])
       image_output_concat = tf.concat(axis=2, values=[image_output_real, image_output_complex])
       label   = tf.reshape(image_output_concat, [label_size[0], label_size[1], 2])
-    else:  # use only real part
-      label   = abs(image_output)
-      feature = abs(image_input)
     
 
     # Using asynchronous queues

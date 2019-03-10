@@ -622,7 +622,7 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
                                                 num_dc_layers=-1, layer_output_skip=7)
 
     rbs=2
-    with tf.variable_scope('gene',reuse=tf.AUTO_REUSE) as scope:
+    with tf.variable_scope('gene') as scope:
         if FLAGS.unrolled>0:
             gene_output_1 = mri_model.unroll_fista(MY, s, num_grad_steps=FLAGS.unrolled,resblock_num_features=64, resblock_num_blocks=rbs, is_training=True, scope="MRI",mask_output=1, window=None, do_hardproj=True,num_summary_image=0,mask=masks, verbose=False)
             gene_var_list, gene_layers_1 =None,['empty']
@@ -658,7 +658,8 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
     if FLAGS.use_phase==True:
         disc_real_input = tf.identity(labels, name='disc_real_input')
     else:
-        disc_real_input = tf.abs(tf.identity(labels, name='disc_real_input'))
+        disc_real_input = tf.sqrt(labels[:,:,:,0]**2+labels[:,:,:,1]**2)
+        disc_real_input =tf.expand_dims(disc_real_input,-1)
 
     # TBD: Is there a better way to instance the discriminator?
     with tf.variable_scope('disc',reuse=tf.AUTO_REUSE) as scope:
@@ -666,11 +667,15 @@ def create_model(sess, features, labels, masks, MY, s, architecture='resnet'):
                 _discriminator_model(sess, features, disc_real_input, hybrid_disc=FLAGS.hybrid_disc)
 
         scope.reuse_variables()
-        gene_output_abs = tf.abs(gene_output)
+        if FLAGS.use_phase==True:
+            gene_output_abs = gene_output
+        else:
+            gene_output_abs=tf.sqrt(gene_output[:,:,:,0]**2+gene_output[:,:,:,1]**2)
+            gene_output_abs =tf.expand_dims(gene_output_abs,-1)
+
         disc_fake_output, _, disc_layers_Z = _discriminator_model(sess, features, gene_output_abs, hybrid_disc=FLAGS.hybrid_disc)
 
-    return [gene_minput,gene_mMY,gene_ms, gene_moutput, gene_output, gene_var_list, gene_layers, gene_mlayers,
-            disc_real_output, disc_fake_output, disc_var_list]#, disc_layers_X, disc_layers_Z]    
+    return [gene_minput,gene_mMY,gene_ms, gene_moutput, gene_output_abs, gene_var_list, gene_layers, gene_mlayers, disc_real_output, disc_fake_output, disc_var_list,disc_real_input]    
 
 
 # SSIM
@@ -765,34 +770,6 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     gene_ls_loss = tf.reduce_mean(ls_loss, name='gene_ls_loss')
     #gene_ce_loss = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
 
-    # I.e. does the result look like the feature?
-    # K = int(gene_output.get_shape()[1])//int(features.get_shape()[1])
-    # assert K == 2 or K == 4 or K == 8    
-    # downscaled = _downscale(gene_output, K)
-
-    # fourier_transform
-    if FLAGS.use_phase==True:
-      gene_kspace = Fourier(gene_output, separate_complex=True)
-    else:
-      gene_kspace = Fourier(gene_output, separate_complex=False)
-    feature_kspace = Fourier(features, separate_complex=True)
-
-    # mask to get affine projection error
-    threshold_zero = 1./255.
-    feature_mask = masks #tf.greater(tf.abs(feature_kspace),threshold_zero)
-    #print('mask shape , get_shape():', feature_mask.get_shape())
-
-    loss_kspace = tf.cast(tf.abs(tf.square(gene_kspace - feature_kspace)),tf.float32)*tf.cast(feature_mask,tf.float32)
-    #print('loss_kspace shape , get_shape():', loss_kspace.get_shape())
-
-
-    # compare with real output
-    #print('real output , get_shape():', labels.get_shape())
-        
-    # data consistency
-    gene_dc_loss  = tf.reduce_mean(loss_kspace, name='gene_dc_loss')
-
-
     # mse loss
     if FLAGS.supervised==2:
         gene_mixmse_loss = tf.reduce_mean(tf.square(gene_output-labels),name='gene_l2_loss')
@@ -815,8 +792,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
         gene_fool_loss = (1.0 - FLAGS.gene_log_factor) * gene_ls_loss
 
     # non-mse loss = fool-loss + data consisntency loss
-    gene_non_mse_l2     = tf.add((1.0 - FLAGS.gene_dc_factor) * gene_fool_loss,
-                           FLAGS.gene_dc_factor * gene_dc_loss, name='gene_nonmse_l2')
+    gene_non_mse_l2     = gene_fool_loss
     
 
     #total loss = fool-loss + data consistency loss + mse forward-passing loss
@@ -828,16 +804,13 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
         gene_loss = gene_mixmse_loss
     else:
         gene_loss     = gene_non_mse_l2
-    # use feature matching
-    if FLAGS.FM:
-        pass##gene_loss+=0.5*tf.reduce_mean((X[0]-Z[0])*(X[0]-Z[0]))+0.5*tf.reduce_mean((X[1]-Z[1])*(X[1]-Z[1]))
     # log to tensorboard
     tf.summary.scalar('gene_fool_loss', gene_non_mse_l2)
     tf.summary.scalar('gene_L1_loss', gene_mixmse_loss)
     #list of loss (dummy)
-    list_gene_lose = None#[gene_dc_loss, gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
+    list_gene_lose = None#[gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
-    return gene_loss, gene_mixmse_loss, gene_dc_loss, list_gene_lose
+    return gene_loss, gene_mixmse_loss,  0.0, list_gene_lose
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = None, fake_data = None):

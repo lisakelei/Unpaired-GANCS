@@ -21,19 +21,19 @@ def _summarize_progress(train_data, feature, label, gene_output,
     complex_zpad = feature 
 
     # zpad magnitude
-    if FLAGS.use_phase==True:
+    if True:
       mag_zpad = tf.sqrt(complex_zpad[:,:,:,0]**2+complex_zpad[:,:,:,1]**2)
     else:
       mag_zpad = tf.sqrt(complex_zpad[:,:,:,0]**2)
     
     # output image
-    if FLAGS.use_phase==True:
+    if True:
       gene_output_complex = tf.complex(gene_output[:,:,:,0],gene_output[:,:,:,1])
     else:
       gene_output_complex = gene_output
     mag_output=tf.abs(gene_output_complex)#print('size_mag_output', mag)
 
-    if FLAGS.use_phase==True:
+    if True:
       label_complex = tf.complex(label[:,:,:,0], label[:,:,:,1])
     else:
       label_complex = label
@@ -51,7 +51,7 @@ def _summarize_progress(train_data, feature, label, gene_output,
     
 
     # concate for visualize image
-    if FLAGS.use_phase==True:
+    if True:
       image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,50*abs(mag_output-mag_zpad),50*abs(mag_gt-mag_output)])
     else:
       image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt,abs(mag_gt-mag_zpad)])
