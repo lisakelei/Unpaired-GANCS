@@ -28,10 +28,10 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     
     if test is False:
         MYims= tf.py_func(read_npy,[key],tf.complex64,stateful=False)
-        MYims.set_shape([17,256,320])
+        MYims.set_shape([17,FLAGS.sample_size,FLAGS.sample_size_y])
         image_input=MYims[8,:,:]
         MY=MYims[0:8,:,:]
-        s=MYims[9::,:,:]
+        s=MYims[9:17,:,:]
         reader_output = tf.WholeFileReader()
         filename_queue_output = tf.train.string_input_producer(filenames_output, shuffle=False)
         key_out, _value_output = reader_output.read(filename_queue_output)
@@ -39,7 +39,7 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
         image_output.set_shape([256,320])
     else:
         MYimst = tf.py_func(read_npy,[key],tf.complex64)
-        MYimst.set_shape([18,256,320])
+        MYimst.set_shape([18,FLAGS.sample_size,FLAGS.sample_size_y])
         image_output=MYimst[-1,:,:]
         image_input=MYimst[8,:,:]
         MY=MYimst[0:8,:,:]
@@ -64,13 +64,19 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     feature = tf.reshape(image_zpad_concat, [image_size[0], image_size[1], 2])
     
     image_output_real = tf.real(image_output)
-    image_output_real = tf.reshape(image_output_real, [label_size[0], label_size[1], 1]) 
+    if test is False:
+        image_output_real = tf.reshape(image_output_real, [label_size[0], label_size[1], 1])
+        image_output_complex = tf.imag(image_output)
+        image_output_complex = tf.reshape(image_output_complex, [label_size[0], label_size[1], 1])
+        image_output_concat = tf.concat(axis=2, values=[image_output_real, image_output_complex])
+        label   = tf.reshape(image_output_concat, [label_size[0], label_size[1], 2]) 
+    else:
+        image_output_real = tf.reshape(image_output_real, [80, 180, 1])
+        image_output_complex = tf.imag(image_output)
+        image_output_complex = tf.reshape(image_output_complex, [80, 180, 1])
+        image_output_concat = tf.concat(axis=2, values=[image_output_real, image_output_complex])
+        label   = tf.reshape(image_output_concat, [80, 180, 2])
     # split the complex label into real and imaginary channels
-    if True:
-      image_output_complex = tf.imag(image_output)
-      image_output_complex = tf.reshape(image_output_complex, [label_size[0], label_size[1], 1])
-      image_output_concat = tf.concat(axis=2, values=[image_output_real, image_output_complex])
-      label   = tf.reshape(image_output_concat, [label_size[0], label_size[1], 2])
     
 
     # Using asynchronous queues

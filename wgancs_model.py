@@ -774,6 +774,8 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     if FLAGS.supervised==2:
         gene_mixmse_loss = tf.reduce_mean(tf.square(gene_output-labels),name='gene_l2_loss')
     else: 
+        if FLAGS.sample_size!=256:
+            labels=labels[:,0:80,0:180,:]
         gene_mixmse_loss = tf.reduce_mean(tf.abs(gene_output - labels), name='gene_l1_loss')
 
     '''gene_mse_loss = tf.add(FLAGS.gene_l1l2_factor * gene_l1_loss, 
@@ -823,7 +825,9 @@ def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = No
     if FLAGS.wgan_gp:
         disc_cost = tf.reduce_mean(disc_fake_output) - tf.reduce_mean(disc_real_output)  
         # generate noisy inputs 
-        alpha = tf.random_uniform(shape=[FLAGS.batch_size, 1, 1, 1], minval=0.,maxval=1.) 
+        alpha = tf.random_uniform(shape=[FLAGS.batch_size, 1, 1, 1], minval=0.,maxval=1.)
+        if FLAGS.sample_size!=256:
+          real_data=tf.transpose(real_data[:,38:38+180,215:215+80,:],[0,2,1,3]) 
         interpolates = real_data + alpha*(fake_data - real_data) 
         
         with tf.variable_scope('disc', reuse=True) as scope:
