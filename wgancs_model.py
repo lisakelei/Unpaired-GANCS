@@ -768,7 +768,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     # LS cost
     ls_loss = tf.square(disc_output - tf.ones_like(disc_output))
     gene_ls_loss = tf.reduce_mean(ls_loss, name='gene_ls_loss')
-    #gene_ce_loss = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
+    gene_tv_loss = tf.reduce_sum(tf.abs(tf.image.total_variation(gene_output)))
 
     # mse loss
     if FLAGS.supervised==2:
@@ -792,11 +792,9 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
         gene_fool_loss = (1.0 - FLAGS.gene_log_factor) * gene_ls_loss
 
     # non-mse loss = fool-loss + data consisntency loss
-    gene_non_mse_l2     = gene_fool_loss
+    gene_non_mse_l2     = gene_fool_loss + 10* gene_tv_loss
     
 
-    #total loss = fool-loss + data consistency loss + mse forward-passing loss
-    
     #gene_mse_factor as a parameter
     if FLAGS.supervised==3:
         gene_loss = 0.05*gene_non_mse_l2+gene_mixmse_loss
@@ -805,12 +803,13 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     else:
         gene_loss     = gene_non_mse_l2
     # log to tensorboard
-    tf.summary.scalar('gene_fool_loss', gene_non_mse_l2)
+    tf.summary.scalar('gene_fool_loss', gene_fool_loss)
     tf.summary.scalar('gene_L1_loss', gene_mixmse_loss)
+    tf.summary.scalar('gene_tv_loss', gene_tv_loss)
     #list of loss (dummy)
     list_gene_lose = None#[gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
-    return gene_loss, gene_mixmse_loss,  0.0, list_gene_lose
+    return gene_loss, gene_mixmse_loss, list_gene_lose
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = None, fake_data = None):
