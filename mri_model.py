@@ -343,7 +343,7 @@ def unroll_fista(ks_input, sensemap, num_grad_steps=5,
             if verbose:
                 print("%s>   Final hard data projection..." % scope)
             # Final data projection
-            ks_k = mask * ks_0 + (1 - mask) * ks_k
+            ks_k = 0.9*mask * ks_0 + (1 - 0.9*mask) * ks_k
             if mask_output is not None:
                 ks_k = ks_k * mask_output
             im_k = tf_util.model_transpose(ks_k * window, sensemap)

@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import mri_model
+import wvutil
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -761,6 +762,21 @@ def loss_DSSIS_tf11(y_true, y_pred, patch_size=5, batch_size=-1):
     # ssim = tf.select(tf.is_nan(ssim), K.zeros_like(ssim), ssim)
     return tf.reduce_mean(ssim, name='ssim') #tf.reduce_mean(((1.0 - ssim) / 2), name='ssim_loss')
 
+def wavelet_l1(img_batch_1):
+    # assum a 4D image with [batch, x, y, 2] (2 can be other values)
+    # perform 2D wavelet
+    value = 0
+    nbatch = img_batch_1.get_shape()[0]
+    nfilter = img_batch_1.get_shape()[-1]
+    ndim = 2
+    for i in range(nbatch):
+        j = 0
+        tmpreal = wvutil.wavelet_forward(tf.squeeze(tf.slice(tf.real(img_batch_1),[i,0,0,j],[1,-1,-1,1])), ndim, wavelet='db4', levels=4)
+        tmpimag = wvutil.wavelet_forward(tf.squeeze(tf.slice(tf.imag(img_batch_1),[i,0,0,j],[1,-1,-1,1])), ndim, wavelet='db4', levels=4)
+        value += tf.reduce_sum(tf.abs(tf.complex(tmpreal,tmpimag)))
+
+    return value
+
 def create_generator_loss(disc_output, gene_output, features, labels, masks):#, X,Z):
     # I.e. did we fool the discriminator?
     #cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_output, labels=tf.ones_like(disc_output))
@@ -768,7 +784,8 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     # LS cost
     ls_loss = tf.square(disc_output - tf.ones_like(disc_output))
     gene_ls_loss = tf.reduce_mean(ls_loss, name='gene_ls_loss')
-    gene_tv_loss = tf.reduce_sum(tf.abs(tf.image.total_variation(gene_output)))
+    #gene_tv_loss = tf.reduce_sum(tf.abs(tf.image.total_variation(gene_output)))
+    gene_wv_loss = wavelet_l1(gene_output)
 
     # mse loss
     if FLAGS.supervised==2:
@@ -792,7 +809,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
         gene_fool_loss = (1.0 - FLAGS.gene_log_factor) * gene_ls_loss
 
     # non-mse loss = fool-loss + data consisntency loss
-    gene_non_mse_l2     = gene_fool_loss + 10* gene_tv_loss
+    gene_non_mse_l2     = gene_fool_loss + 10* gene_wv_loss #tv_loss
     
 
     #gene_mse_factor as a parameter
@@ -805,7 +822,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     # log to tensorboard
     tf.summary.scalar('gene_fool_loss', gene_fool_loss)
     tf.summary.scalar('gene_L1_loss', gene_mixmse_loss)
-    tf.summary.scalar('gene_tv_loss', gene_tv_loss)
+    tf.summary.scalar('gene_tv_loss', gene_wv_loss)
     #list of loss (dummy)
     list_gene_lose = None#[gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
