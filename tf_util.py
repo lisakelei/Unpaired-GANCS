@@ -26,7 +26,7 @@ def channels_to_complex(image, name="channels2complex"):
                               axis=0)
         image_out = tf.reshape(image_out, shape_out)'''
         image = tf.cast(image,tf.complex64)
-        image_out =tf.reshape(image[:,:,:,0]+1j* image[:,:,:,1],[FLAGS.batch_size,FLAGS.sample_size,FLAGS.sample_size_y]) 
+        image_out =tf.reshape(image[:,:,:,0]+1j* image[:,:,:,1],[FLAGS.batch_size,256,320]) 
 
     return image_out
 
