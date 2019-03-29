@@ -136,27 +136,31 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
     snr_prev=0
     while not done:
         batch += 1
-        gene_ls_loss = gene_dc_loss = gene_loss = disc_real_loss = disc_fake_loss = -1.234
+        gene_ls_loss = gene_loss = disc_real_loss = disc_fake_loss = -1.234
 
         #first train based on MSE and then GAN
-        feed_dict = {td.learning_rate : lrval }
-
+        if batch<500:
+            feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 1}
+        elif batch <1000:
+            feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 0.995+(1000-batch)/500*0.005}
+        else:
+            feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 0.995}
 	# train disc multiple times
         for disc_iter in range(3):
             td.sess.run([td.disc_minimize],feed_dict=feed_dict)
 	# then train both disc and gene once
-        ops = [td.gene_minimize, td.disc_minimize, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
-        _, _, fet_sum,gene_loss, gene_mse_loss, gene_dc_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
+        ops = [td.gene_minimize, td.disc_minimize, summary_op, td.gene_loss, td.gene_mse_loss, td.disc_real_loss, td.disc_fake_loss]                   
+        _, _, fet_sum,gene_loss, gene_mse_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
         sum_writer.add_summary(fet_sum,batch)
         
         # verbose training progress
         if batch % 20 == 0:
             # Show we are alive
             elapsed = int(time.time() - start_time)/60
-            err_log = 'Elapsed[{0:3f}], Batch [{1:1f}], G_Loss[{2}], G_mse_Loss[{3:3.3f}], G_LS_Loss[{4:3.3f}], G_DC_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(elapsed, batch, gene_loss, gene_mse_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss)
+            err_log = 'Elapsed[{0:3f}], Batch [{1:1f}], G_Loss[{2}], G_mse_Loss[{3:3.3f}], G_LS_Loss[{4:3.3f}], D_Real_Loss[{5:3.3f}], D_Fake_Loss[{6:3.3f}]'.format(elapsed, batch, gene_loss, gene_mse_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
             print(err_log)
             # update err loss
-            err_loss = [int(batch), float(gene_loss), float(gene_dc_loss), 
+            err_loss = [int(batch), float(gene_loss),
                         float(gene_ls_loss), float(disc_real_loss), float(disc_fake_loss)]
             accumuated_err_loss.append(err_loss)
             # Finished?            
@@ -212,9 +216,9 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
         # export train batches
         if FLAGS.summary_train_period>0 and (batch % FLAGS.summary_train_period == 0):
             # get train data
-            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, 
+            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.disc_real_loss, td.disc_fake_loss, 
                    td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
-            _, _, gene_loss, gene_dc_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
+            _, _, gene_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output = td.sess.run(ops, feed_dict=feed_dict)
             print('train sample size:',train_feature.shape, train_label.shape, train_output.shape)
             _summarize_progress(td, train_feature, train_label, train_output, batch%num_batch_train, 'train',max_samples=4)
 

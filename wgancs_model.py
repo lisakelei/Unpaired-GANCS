@@ -769,6 +769,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     ls_loss = tf.square(disc_output - tf.ones_like(disc_output))
     gene_ls_loss = tf.reduce_mean(ls_loss, name='gene_ls_loss')
     #gene_ce_loss = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
+    gene_mse_factor  = tf.placeholder(dtype=tf.float32, name='gene_mse_factor')
 
     # mse loss
     if FLAGS.supervised==2:
@@ -799,7 +800,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     
     #gene_mse_factor as a parameter
     if FLAGS.supervised==3:
-        gene_loss = 0.05*gene_non_mse_l2+gene_mixmse_loss
+        gene_loss = (1-gene_mse_factor)*gene_non_mse_l2+gene_mse_factor*gene_mixmse_loss
     elif FLAGS.supervised>0:
         gene_loss = gene_mixmse_loss
     else:
@@ -810,7 +811,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     #list of loss (dummy)
     list_gene_lose = None#[gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
-    return gene_loss, gene_mixmse_loss,  0.0, list_gene_lose
+    return gene_loss, gene_mixmse_loss, list_gene_lose,gene_mse_factor
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = None, fake_data = None):
