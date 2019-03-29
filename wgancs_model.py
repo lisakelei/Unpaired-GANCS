@@ -771,8 +771,8 @@ def wavelet_l1(img_batch_1):
     ndim = 2
     for i in range(nbatch):
         j = 0
-        tmpreal = wvutil.wavelet_forward(tf.squeeze(tf.slice(tf.real(img_batch_1),[i,0,0,j],[1,-1,-1,1])), ndim, wavelet='db4', levels=4)
-        tmpimag = wvutil.wavelet_forward(tf.squeeze(tf.slice(tf.imag(img_batch_1),[i,0,0,j],[1,-1,-1,1])), ndim, wavelet='db4', levels=4)
+        tmpreal = _wvutil.wavelet_forward(tf.squeeze(tf.slice(tf.real(img_batch_1),[i,0,0,j],[1,-1,-1,1])), ndim, wavelet='db4', levels=4)
+        tmpimag = _wvutil.wavelet_forward(tf.squeeze(tf.slice(tf.imag(img_batch_1),[i,0,0,j],[1,-1,-1,1])), ndim, wavelet='db4', levels=4)
         value += tf.reduce_sum(tf.abs(tf.complex(tmpreal,tmpimag)))
 
     return value
