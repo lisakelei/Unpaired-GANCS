@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import mri_model
-import wvutil
+import _wvutil
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -786,6 +786,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     gene_ls_loss = tf.reduce_mean(ls_loss, name='gene_ls_loss')
     #gene_tv_loss = tf.reduce_sum(tf.abs(tf.image.total_variation(gene_output)))
     gene_wv_loss = wavelet_l1(gene_output)
+    gene_mse_factor  = tf.placeholder(dtype=tf.float32, name='gene_mse_factor')
 
     # mse loss
     if FLAGS.supervised==2:
@@ -809,7 +810,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
         gene_fool_loss = (1.0 - FLAGS.gene_log_factor) * gene_ls_loss
 
     # non-mse loss = fool-loss + data consisntency loss
-    gene_non_mse_l2     = gene_fool_loss + 10* gene_wv_loss #tv_loss
+    gene_non_mse_l2     = (1-gene_mse_factor)*gene_fool_loss + gene_mse_factor* gene_wv_loss #tv_loss
     
 
     #gene_mse_factor as a parameter
@@ -826,7 +827,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks):#, 
     #list of loss (dummy)
     list_gene_lose = None#[gene_mixmse_loss, gene_fool_loss, gene_non_mse_l2, gene_loss]
 
-    return gene_loss, gene_mixmse_loss, list_gene_lose
+    return gene_loss, gene_mixmse_loss, list_gene_lose, gene_mse_factor
     
 
 def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = None, fake_data = None):

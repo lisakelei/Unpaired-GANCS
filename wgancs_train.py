@@ -139,7 +139,12 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
         gene_ls_loss = gene_dc_loss = gene_loss = disc_real_loss = disc_fake_loss = -1.234
 
         #first train based on MSE and then GAN
-        feed_dict = {td.learning_rate : lrval }
+        if batch<500:
+            feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 1}
+        elif batch <1000:
+            feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 0.95+(1000-batch)/500*0.05}
+        else:
+            feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 0.95}
 
 	# train disc multiple times
         for disc_iter in range(3):
