@@ -214,11 +214,11 @@ def _train():
     filenames_input_train = [filenames_input_train[x] for x in index_permutation_split]
     if False:#FLAGS.supervised<0:  
         index_permutation_split = random.sample(range(len(filenames_output_train)), num_filename_train)
-    filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
+    #filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
 
     print("First three filenames_output_Test",filenames_input_test[0:3])
     print("First three filenames_Input_train",filenames_input_train[0:3])
-    print("First three filenames_Output_train",filenames_output_train[0:3])
+    print("First three filenames_Output_train",filenames_output_train[0:5])
 
     # Sample training and test sets (SEPARATE FOLDERS)
     train_filenames_input = filenames_input_train[:FLAGS.sample_train]    
