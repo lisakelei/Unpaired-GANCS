@@ -145,10 +145,10 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
         for disc_iter in range(3):
             td.sess.run([td.disc_minimize],feed_dict=feed_dict)
 	# then train both disc and gene once
-        ops = [td.disc_fake_output, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
-        disc_fake_output, fet_sum,gene_loss, gene_mse_loss, gene_dc_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
+        ops = [td.disc_real_output, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
+        disc_real_output, fet_sum,gene_loss, gene_mse_loss, gene_dc_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
         #sum_writer.add_summary(fet_sum,batch)
-	print('!!!!  ',disc_fake_output)
+	print('!!!!  ',disc_real_output)
         
         # verbose training progress
         if batch % 20 == 0:
