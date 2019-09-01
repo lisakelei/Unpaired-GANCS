@@ -145,29 +145,11 @@ def train_model(train_data, batchcount, num_sample_train=16, num_sample_test=116
         for disc_iter in range(3):
             td.sess.run([td.disc_minimize],feed_dict=feed_dict)
 	# then train both disc and gene once
-        ops = [td.disc_real_output, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss]                   
-        disc_real_output, fet_sum,gene_loss, gene_mse_loss, gene_dc_loss, disc_real_loss, disc_fake_loss = td.sess.run(ops, feed_dict=feed_dict)
+        ops = [td.disc_real_output]                   
+        disc_real_output=td.sess.run(ops, feed_dict=feed_dict)
         #sum_writer.add_summary(fet_sum,batch)
-	print('!!!!  ',disc_real_output)
+        print(batch, '  !!!!  ',disc_real_output)
         
-        # verbose training progress
-        if batch % 20 == 0:
-            # Show we are alive
-            elapsed = int(time.time() - start_time)/60
-            err_log = 'Elapsed[{0:3f}], Batch [{1:1f}], G_Loss[{2}], G_mse_Loss[{3:3.3f}], G_LS_Loss[{4:3.3f}], G_DC_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(elapsed, batch, gene_loss, gene_mse_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss)
-            print(err_log)
-            # update err loss
-            err_loss = [int(batch), float(gene_loss), float(gene_dc_loss), 
-                        float(gene_ls_loss), float(disc_real_loss), float(disc_fake_loss)]
-            accumuated_err_loss.append(err_loss)
-            # Finished?            
-            current_progress = elapsed / FLAGS.train_time
-            if (current_progress >= 1.0) or (batch > FLAGS.train_time*200):
-                done = True
-            
-            # Update learning rate
-            if batch % FLAGS.learning_rate_half_life == 0:
-                lrval *= .5
 
         # export test batches
         if batch % FLAGS.summary_period == 0:
