@@ -32,7 +32,4 @@ python3 wgancs_main.py
 
 # Datasets
 
-For medical image reconstruction we adopt the MRI datasets available at the https://www.mridata.org made available as a result of a joint collaboration between Stanford & UC Berkeley. It includes a 20 3D Knee images that have a high resoltuion of 192x320x256. 192 2D axial slices are collected from all patients to form the training and test datasets. 
-
--- The input files have .jpg format in the train and test folders               
--- The sampling mask is randomly generated based on a avariable density with radial view ordering sampling technique. The        Matlab code is avialble at http://mrsrl.stanford.edu/~jycheng/software.html
+For medical image reconstruction we adopt the MRI datasets available at the https://www.mridata.org in the "Stanford Fullysampled 3D FSE Knees" project, made available as a result of a joint collaboration between Stanford & UC Berkeley. It includes a 20 3D Knee images that have a high resoltuion of 320x320x256. 320 2D axial slices are collected from all patients to form the training and test datasets. 
